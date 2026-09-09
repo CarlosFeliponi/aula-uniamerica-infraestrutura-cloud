@@ -30,8 +30,10 @@ app.use(cors({
 }));
 app.use(bodyParser.json());
 
+const router = express.Router();
+
 // Health check — usado pelo Load Balancer pra saber se essa instância está saudável.
-app.get('/health', (req, res) => res.status(200).json({ status: 'ok' }));
+router.get('/health', (req, res) => res.status(200).json({ status: 'ok' }));
 
 // Definindo o modelo de Tarefa (To-do)
 const TodoSchema = new mongoose.Schema({
@@ -42,7 +44,7 @@ const TodoSchema = new mongoose.Schema({
 const Todo = mongoose.model('Todo', TodoSchema);
 
 // Rota para obter todas as tarefas (GET)
-app.get('/todos', async (req, res) => {
+router.get('/todos', async (req, res) => {
   try {
     const todos = await Todo.find(); // Retorna todas as tarefas do banco
     res.json(todos);
@@ -52,7 +54,7 @@ app.get('/todos', async (req, res) => {
 });
 
 // Rota para adicionar uma nova tarefa (POST)
-app.post('/todos', async (req, res) => {
+router.post('/todos', async (req, res) => {
   const { text } = req.body; // Obtém o texto da tarefa do corpo da requisição
 
   // Verifica se o campo "text" está presente
@@ -74,7 +76,7 @@ app.post('/todos', async (req, res) => {
 });
 
 // Rota para marcar uma tarefa como concluída (PATCH)
-app.patch('/todos/:id', async (req, res) => {
+router.patch('/todos/:id', async (req, res) => {
   try {
     const todo = await Todo.findById(req.params.id); // Encontra a tarefa pelo ID
 
@@ -92,7 +94,7 @@ app.patch('/todos/:id', async (req, res) => {
 });
 
 // Rota para excluir uma tarefa (DELETE)
-app.delete('/todos/:id', async (req, res) => {
+router.delete('/todos/:id', async (req, res) => {
   try {
     const todo = await Todo.findByIdAndDelete(req.params.id); // Deleta a tarefa pelo ID
 
@@ -105,6 +107,12 @@ app.delete('/todos/:id', async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 });
+
+// Monta as MESMAS rotas em dois lugares:
+// sem prefixo (pra você continuar testando local/via proxy como já fazia)
+// e sob /api (que é o caminho que o Load Balancer vai usar em produção)
+app.use('/', router);
+app.use('/api', router);
 
 app.listen(port, '0.0.0.0', () => {
   console.log(`Servidor rodando na porta ${port}`);

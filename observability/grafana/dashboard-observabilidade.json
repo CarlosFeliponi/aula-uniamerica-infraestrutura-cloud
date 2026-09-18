@@ -1,0 +1,605 @@
+{
+  "description": "8 paineis (7 fundamentados de aplicacao/usuario + 1 de referencia operacional) sobre o Cloud Monitoring do projeto todo-infra-2026-m2.",
+  "id": 2052051799293952,
+  "panels": [
+    {
+      "datasource": {
+        "type": "stackdriver",
+        "uid": "cfykm3nv47jswd"
+      },
+      "description": "Requisi\u00e7\u00f5es/seg por rota e m\u00e9todo (app_http_requests, exclui /health). Pergunta: quais opera\u00e7\u00f5es s\u00e3o mais usadas e como o volume varia no tempo?",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10
+          },
+          "unit": "reqps"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "stackdriver",
+            "uid": "cfykm3nv47jswd"
+          },
+          "queryType": "timeSeriesQuery",
+          "refId": "A",
+          "timeSeriesQuery": {
+            "projectName": "todo-infra-2026-m2",
+            "query": "fetch cloud_run_revision | metric 'logging.googleapis.com/user/app_http_requests' | align rate(1m) | group_by [metric.route, metric.method], sum(val())"
+          }
+        }
+      ],
+      "title": "Painel 1 \u2014 Uso por opera\u00e7\u00e3o (volume por rota/m\u00e9todo)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "stackdriver",
+        "uid": "cfykm3nv47jswd"
+      },
+      "description": "Percentual de respostas 4xx/5xx por rota (numerador: app_http_requests com status_class 4xx ou 5xx; denominador: total da mesma rota). Pergunta: quais opera\u00e7\u00f5es est\u00e3o falhando?",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10
+          },
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
+      "id": 2,
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "stackdriver",
+            "uid": "cfykm3nv47jswd"
+          },
+          "queryType": "timeSeriesQuery",
+          "refId": "A",
+          "timeSeriesQuery": {
+            "projectName": "todo-infra-2026-m2",
+            "query": "{ t_errors: fetch cloud_run_revision | metric 'logging.googleapis.com/user/app_http_requests' | filter metric.status_class =~ '4xx|5xx' | align rate(5m) | group_by [metric.route], sum(val()) ; t_total: fetch cloud_run_revision | metric 'logging.googleapis.com/user/app_http_requests' | align rate(5m) | group_by [metric.route], sum(val()) } | join | value [error_rate_pct: val(0) / val(1) * 100]"
+          }
+        }
+      ],
+      "title": "Painel 2 \u2014 Taxa de erro por opera\u00e7\u00e3o",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "stackdriver",
+        "uid": "cfykm3nv47jswd"
+      },
+      "description": "Dura\u00e7\u00e3o das requisi\u00e7\u00f5es (app_http_request_duration), mediana e p95 por rota, em ms. Pergunta: quais opera\u00e7\u00f5es demoram mais, e quando?",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10
+          },
+          "unit": "ms"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 8
+      },
+      "id": 3,
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "stackdriver",
+            "uid": "cfykm3nv47jswd"
+          },
+          "queryType": "timeSeriesQuery",
+          "refId": "A",
+          "timeSeriesQuery": {
+            "projectName": "todo-infra-2026-m2",
+            "query": "fetch cloud_run_revision | metric 'logging.googleapis.com/user/app_http_request_duration' | group_by [metric.route], percentile(val(), 95) | every 1m"
+          }
+        },
+        {
+          "datasource": {
+            "type": "stackdriver",
+            "uid": "cfykm3nv47jswd"
+          },
+          "queryType": "timeSeriesQuery",
+          "refId": "B",
+          "timeSeriesQuery": {
+            "projectName": "todo-infra-2026-m2",
+            "query": "fetch cloud_run_revision | metric 'logging.googleapis.com/user/app_http_request_duration' | group_by [metric.route], percentile(val(), 50) | every 1m"
+          }
+        }
+      ],
+      "title": "Painel 3 \u2014 Tempo de resposta por opera\u00e7\u00e3o (p50/p95)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "stackdriver",
+        "uid": "cfykm3nv47jswd"
+      },
+      "description": "Contagem de chamadas Mongoose por opera\u00e7\u00e3o e resultado (app_db_operations). Pergunta: as opera\u00e7\u00f5es do backend contra o Atlas est\u00e3o funcionando?",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10
+          },
+          "unit": "reqps"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 16
+      },
+      "id": 4,
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "stackdriver",
+            "uid": "cfykm3nv47jswd"
+          },
+          "queryType": "timeSeriesQuery",
+          "refId": "A",
+          "timeSeriesQuery": {
+            "projectName": "todo-infra-2026-m2",
+            "query": "fetch cloud_run_revision | metric 'logging.googleapis.com/user/app_db_operations' | align rate(1m) | group_by [metric.operation, metric.result], sum(val())"
+          }
+        }
+      ],
+      "title": "Painel 4a \u2014 Sa\u00fade das opera\u00e7\u00f5es no banco (sucesso/falha)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "stackdriver",
+        "uid": "cfykm3nv47jswd"
+      },
+      "description": "Dura\u00e7\u00e3o das chamadas Mongoose (app_db_operation_duration), p95 por opera\u00e7\u00e3o, em ms.",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10
+          },
+          "unit": "ms"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 16
+      },
+      "id": 5,
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "stackdriver",
+            "uid": "cfykm3nv47jswd"
+          },
+          "queryType": "timeSeriesQuery",
+          "refId": "A",
+          "timeSeriesQuery": {
+            "projectName": "todo-infra-2026-m2",
+            "query": "fetch cloud_run_revision | metric 'logging.googleapis.com/user/app_db_operation_duration' | group_by [metric.operation], percentile(val(), 95) | every 1m"
+          }
+        }
+      ],
+      "title": "Painel 4b \u2014 Dura\u00e7\u00e3o das opera\u00e7\u00f5es no banco (p95)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "stackdriver",
+        "uid": "cfykm3nv47jswd"
+      },
+      "description": "Fra\u00e7\u00e3o de Uptime Checks bem-sucedidos (check_passed) por endpoint, sondados a cada 5 min de localidades globais do Google. Pergunta: a aplica\u00e7\u00e3o est\u00e1 de fato acess\u00edvel pelo dom\u00ednio p\u00fablico?",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10
+          },
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 24
+      },
+      "id": 6,
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "stackdriver",
+            "uid": "cfykm3nv47jswd"
+          },
+          "queryType": "timeSeriesQuery",
+          "refId": "A",
+          "timeSeriesQuery": {
+            "projectName": "todo-infra-2026-m2",
+            "query": "fetch uptime_url | metric 'monitoring.googleapis.com/uptime_check/check_passed' | align next_older(5m) | group_by [resource.host, metric.check_id], fraction_true(val())"
+          }
+        }
+      ],
+      "title": "Painel 5 \u2014 Disponibilidade real do dom\u00ednio",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "stackdriver",
+        "uid": "cfykm3nv47jswd"
+      },
+      "description": "Eventos de neg\u00f3cio (app_business_events) por tipo: criada, conclu\u00edda, reaberta, apagada. Pergunta: como as pessoas de fato usam a lista?",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10
+          },
+          "unit": "reqps"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 24
+      },
+      "id": 7,
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "stackdriver",
+            "uid": "cfykm3nv47jswd"
+          },
+          "queryType": "timeSeriesQuery",
+          "refId": "A",
+          "timeSeriesQuery": {
+            "projectName": "todo-infra-2026-m2",
+            "query": "fetch cloud_run_revision | metric 'logging.googleapis.com/user/app_business_events' | align rate(1m) | group_by [metric.event_name], sum(val())"
+          }
+        }
+      ],
+      "title": "Painel 6 \u2014 Funil de conclus\u00e3o de tarefas",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "stackdriver",
+        "uid": "cfykm3nv47jswd"
+      },
+      "description": "Requisi\u00e7\u00f5es \u00e0 API por pa\u00eds de origem e decis\u00e3o do Cloud Armor (lb_requests_by_region). Pergunta: de onde v\u00eam os acessos, e as tentativas de regi\u00f5es bloqueadas (ex.: Coreia do Norte) s\u00e3o rejeitadas?",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10
+          },
+          "unit": "reqps"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 32
+      },
+      "id": 8,
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "stackdriver",
+            "uid": "cfykm3nv47jswd"
+          },
+          "queryType": "timeSeriesQuery",
+          "refId": "A",
+          "timeSeriesQuery": {
+            "projectName": "todo-infra-2026-m2",
+            "query": "fetch l7_lb_rule | metric 'logging.googleapis.com/user/lb_requests_by_region' | align rate(5m) | group_by [metric.region_code, metric.outcome], sum(val())"
+          }
+        }
+      ],
+      "title": "Painel 7 \u2014 Origem geogr\u00e1fica: permitidos vs. bloqueados",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "stackdriver",
+        "uid": "cfykm3nv47jswd"
+      },
+      "description": "Refer\u00eancia operacional (fora da fundamenta\u00e7\u00e3o de 10 itens, decis\u00e3o expl\u00edcita do usu\u00e1rio). Utiliza\u00e7\u00e3o de CPU do servi\u00e7o backend.",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10
+          },
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 40
+      },
+      "id": 9,
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "stackdriver",
+            "uid": "cfykm3nv47jswd"
+          },
+          "queryType": "timeSeriesQuery",
+          "refId": "A",
+          "timeSeriesQuery": {
+            "projectName": "todo-infra-2026-m2",
+            "query": "fetch cloud_run_revision | metric 'run.googleapis.com/container/cpu/utilizations' | group_by [], mean(val()) | every 1m"
+          }
+        }
+      ],
+      "title": "Painel 8a \u2014 Bastidores: CPU (Cloud Run)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "stackdriver",
+        "uid": "cfykm3nv47jswd"
+      },
+      "description": "Refer\u00eancia operacional (fora da fundamenta\u00e7\u00e3o de 10 itens). Utiliza\u00e7\u00e3o de mem\u00f3ria do servi\u00e7o backend.",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10
+          },
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 40
+      },
+      "id": 10,
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "stackdriver",
+            "uid": "cfykm3nv47jswd"
+          },
+          "queryType": "timeSeriesQuery",
+          "refId": "A",
+          "timeSeriesQuery": {
+            "projectName": "todo-infra-2026-m2",
+            "query": "fetch cloud_run_revision | metric 'run.googleapis.com/container/memory/utilizations' | group_by [], mean(val()) | every 1m"
+          }
+        }
+      ],
+      "title": "Painel 8b \u2014 Bastidores: Mem\u00f3ria (Cloud Run)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "stackdriver",
+        "uid": "cfykm3nv47jswd"
+      },
+      "description": "Refer\u00eancia operacional (fora da fundamenta\u00e7\u00e3o de 10 itens). Contagem de inst\u00e2ncias ativas/ociosas do servi\u00e7o backend.",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 40
+      },
+      "id": 11,
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "stackdriver",
+            "uid": "cfykm3nv47jswd"
+          },
+          "queryType": "timeSeriesQuery",
+          "refId": "A",
+          "timeSeriesQuery": {
+            "projectName": "todo-infra-2026-m2",
+            "query": "fetch cloud_run_revision | metric 'run.googleapis.com/container/instance_count' | group_by [metric.state], mean(val()) | every 1m"
+          }
+        }
+      ],
+      "title": "Painel 8c \u2014 Bastidores: Inst\u00e2ncias (Cloud Run)",
+      "type": "timeseries"
+    }
+  ],
+  "refresh": "1m",
+  "schemaVersion": 39,
+  "tags": [
+    "todo-app",
+    "entrega2",
+    "uniamerica"
+  ],
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timezone": "utc",
+  "title": "Todo List \u2014 Observabilidade (Entrega 2)",
+  "uid": "todo-observabilidade-e2",
+  "version": 1
+}

@@ -1,0 +1,24 @@
+description: "Contagem de requisicoes HTTP da aplicacao Todo List, por rota/metodo/classe de status (exclui /health)."
+filter: |-
+  resource.type="cloud_run_revision"
+  resource.labels.service_name="backend"
+  jsonPayload.event="http_request"
+  jsonPayload.route!="/health"
+metricDescriptor:
+  metricKind: DELTA
+  valueType: INT64
+  unit: "1"
+  labels:
+    - key: route
+      valueType: STRING
+      description: "Rota normalizada (ex.: /todos/:id)"
+    - key: method
+      valueType: STRING
+      description: "Metodo HTTP"
+    - key: status_class
+      valueType: STRING
+      description: "Classe do status HTTP (2xx/4xx/5xx)"
+labelExtractors:
+  route: EXTRACT(jsonPayload.route)
+  method: EXTRACT(jsonPayload.method)
+  status_class: EXTRACT(jsonPayload.status_class)

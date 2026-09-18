@@ -1,0 +1,22 @@
+description: "Contagem de requisicoes a API (via Load Balancer/Cloud Armor), por pais de origem e por resultado (aceita, negada, banida por rate-limit). Fonte do painel de origem geografica e tentativas de regioes bloqueadas."
+filter: |-
+  resource.type="http_load_balancer"
+  jsonPayload.enforcedSecurityPolicy.name="todo-armor"
+metricDescriptor:
+  metricKind: DELTA
+  valueType: INT64
+  unit: "1"
+  labels:
+    - key: region_code
+      valueType: STRING
+      description: "Pais de origem do IP do cliente (ex.: BR, PY, KP), segundo a base de geolocalizacao do Cloud Armor"
+    - key: outcome
+      valueType: STRING
+      description: "ACCEPT ou DENY, conforme a avaliacao da politica todo-armor"
+    - key: configured_action
+      valueType: STRING
+      description: "Acao configurada na regra que decidiu (ex.: ALLOW, DENY, RATE_BASED_BAN)"
+labelExtractors:
+  region_code: EXTRACT(jsonPayload.securityPolicyRequestData.remoteIpInfo.regionCode)
+  outcome: EXTRACT(jsonPayload.enforcedSecurityPolicy.outcome)
+  configured_action: EXTRACT(jsonPayload.enforcedSecurityPolicy.configuredAction)

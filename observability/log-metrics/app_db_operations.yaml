@@ -1,0 +1,19 @@
+description: "Contagem de operacoes do backend contra o MongoDB Atlas, por tipo de operacao e resultado (sucesso/falha)."
+filter: |-
+  resource.type="cloud_run_revision"
+  resource.labels.service_name="backend"
+  jsonPayload.event="db_operation"
+metricDescriptor:
+  metricKind: DELTA
+  valueType: INT64
+  unit: "1"
+  labels:
+    - key: operation
+      valueType: STRING
+      description: "Operacao (list, create, update, delete)"
+    - key: result
+      valueType: STRING
+      description: "success ou failure"
+labelExtractors:
+  operation: EXTRACT(jsonPayload.operation)
+  result: EXTRACT(jsonPayload.result)

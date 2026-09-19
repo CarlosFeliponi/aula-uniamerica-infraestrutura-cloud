@@ -1,5 +1,5 @@
 {
-  "description": "8 paineis Grafana: 4 fundamentados com os 10 itens exigidos (4, 5, 7, 9) + 1 painel de referencia operacional em 3 sub-paineis (8a/8b/8c), sobre o Cloud Monitoring do projeto todo-infra-2026-m2.",
+  "description": "8 paineis Grafana: 4 fundamentados com os 10 itens exigidos (banco, disponibilidade, origem geografica, bloqueios por abuso) + 1 painel de referencia operacional (bastidores, em 3 sub-paineis), sobre o Cloud Monitoring do projeto todo-infra-2026-m2. Nomes diretos, sem numeracao.",
   "id": 2052051799293952,
   "panels": [
     {
@@ -51,7 +51,7 @@
           }
         }
       ],
-      "title": "Painel 4a \u2014 Sa\u00fade das opera\u00e7\u00f5es no banco (sucesso/falha)",
+      "title": "Opera\u00e7\u00f5es no banco \u2014 sucesso e falha",
       "type": "timeseries"
     },
     {
@@ -103,7 +103,7 @@
           }
         }
       ],
-      "title": "Painel 4b \u2014 Dura\u00e7\u00e3o das opera\u00e7\u00f5es no banco (p95)",
+      "title": "Dura\u00e7\u00e3o das opera\u00e7\u00f5es no banco (p95)",
       "type": "timeseries"
     },
     {
@@ -155,7 +155,7 @@
           }
         }
       ],
-      "title": "Painel 5 \u2014 Disponibilidade real do dom\u00ednio",
+      "title": "Disponibilidade real do dom\u00ednio",
       "type": "timeseries"
     },
     {
@@ -163,7 +163,7 @@
         "type": "stackdriver",
         "uid": "cfykm3nv47jswd"
       },
-      "description": "Requisi\u00e7\u00f5es \u00e0 API avaliadas pela regra de rate-based-ban do Cloud Armor (100 req/min/IP, ban 10 min), por configured_action e outcome (lb_requests_by_region). Pergunta: a regra de rate-limit est\u00e1 de fato acionando, e com que frequ\u00eancia \u2014 independente do bloqueio geogr\u00e1fico do Painel 7?",
+      "description": "Requisi\u00e7\u00f5es \u00e0 API avaliadas pela regra de rate-based-ban do Cloud Armor (100 req/min/IP, ban 10 min), por configured_action e outcome (lb_requests_by_region). Pergunta: a regra de rate-limit est\u00e1 de fato acionando, e com que frequ\u00eancia \u2014 independente do bloqueio geogr\u00e1fico?",
       "fieldConfig": {
         "defaults": {
           "custom": {
@@ -207,7 +207,7 @@
           }
         }
       ],
-      "title": "Painel 9 \u2014 Bloqueios por abuso (rate-limit)",
+      "title": "Bloqueios por abuso (rate-limit)",
       "type": "timeseries"
     },
     {
@@ -259,8 +259,21 @@
           }
         }
       ],
-      "title": "Painel 7 \u2014 Origem geogr\u00e1fica: permitidos vs. bloqueados",
+      "title": "Origem geogr\u00e1fica: permitidos vs. bloqueados",
       "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 24
+      },
+      "id": 6,
+      "panels": [],
+      "title": "Bastidores \u2014 refer\u00eancia operacional",
+      "type": "row"
     },
     {
       "datasource": {
@@ -297,9 +310,9 @@
         "h": 8,
         "w": 8,
         "x": 0,
-        "y": 24
+        "y": 25
       },
-      "id": 6,
+      "id": 7,
       "options": {
         "orientation": "auto",
         "reduceOptions": {
@@ -327,7 +340,7 @@
         }
       ],
       "timeFrom": "10m",
-      "title": "Painel 8a \u2014 Bastidores: CPU (Cloud Run)",
+      "title": "CPU (Cloud Run)",
       "type": "gauge"
     },
     {
@@ -365,9 +378,9 @@
         "h": 8,
         "w": 8,
         "x": 8,
-        "y": 24
+        "y": 25
       },
-      "id": 7,
+      "id": 8,
       "options": {
         "orientation": "auto",
         "reduceOptions": {
@@ -395,7 +408,7 @@
         }
       ],
       "timeFrom": "10m",
-      "title": "Painel 8b \u2014 Bastidores: Mem\u00f3ria (Cloud Run)",
+      "title": "Mem\u00f3ria (Cloud Run)",
       "type": "gauge"
     },
     {
@@ -414,9 +427,9 @@
         "h": 8,
         "w": 8,
         "x": 16,
-        "y": 24
+        "y": 25
       },
-      "id": 8,
+      "id": 9,
       "options": {
         "colorMode": "value",
         "graphMode": "none",
@@ -444,7 +457,7 @@
         }
       ],
       "timeFrom": "10m",
-      "title": "Painel 8c \u2014 Bastidores: Inst\u00e2ncias (Cloud Run)",
+      "title": "Inst\u00e2ncias (Cloud Run)",
       "type": "stat"
     }
   ],
@@ -462,5 +475,5 @@
   "timezone": "utc",
   "title": "Todo List \u2014 Observabilidade (Entrega 2)",
   "uid": "todo-observabilidade-e2",
-  "version": 2
+  "version": 3
 }

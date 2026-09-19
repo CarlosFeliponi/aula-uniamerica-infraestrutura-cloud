@@ -75,11 +75,11 @@ controlada (Seção 6) — note o mesmo `request_id` nos dois, é a correlação
 O primeiro registro alimenta `app_http_requests` — essa métrica continua sendo coletada, mas desde
 a reestruturação de escopo (ver nota na Seção 3) não alimenta mais nenhum painel fundamentado;
 fica aqui só como o lado "requisição HTTP" da correlação. O segundo alimenta `app_db_operations`
-(`operation=update`, `result=failure`) — é o que aparece no **Painel 4a**. O `request_id`
-compartilhado comprova que os dois eventos vêm da mesma requisição HTTP: o usuário tentou
-`PATCH /todos/id-invalido`, o Express roteou para `/todos/:id`, a chamada ao Mongoose (`findById`)
-lançou `CastError`, o backend logou a falha do banco e depois devolveu HTTP 500 — a cadeia
-completa, do evento na aplicação até o Painel 4a.
+(`operation=update`, `result=failure`) — é o que aparece em **Operações no banco — sucesso e
+falha**. O `request_id` compartilhado comprova que os dois eventos vêm da mesma requisição HTTP:
+o usuário tentou `PATCH /todos/id-invalido`, o Express roteou para `/todos/:id`, a chamada ao
+Mongoose (`findById`) lançou `CastError`, o backend logou a falha do banco e depois devolveu HTTP
+500 — a cadeia completa, do evento na aplicação até o painel.
 
 ## 3. Log-based metrics e Uptime Checks (configuração reproduzível)
 
@@ -111,15 +111,16 @@ entender, silenciosamente, que elas ainda alimentam algo.
 ## 4. Os painéis
 
 Depois de uma reestruturação de escopo, o dashboard tem **4 painéis fundamentados com os 10 itens
-completos — Painéis 4, 5, 7 e 9 — atendendo ao mínimo de 4 exigido pelo enunciado**, mais **1
-painel de referência operacional (Painel 8), fora dessa exigência**, decisão explícita do usuário,
-implementado em 3 sub-painéis (8a/8b/8c). No Grafana isso totaliza **8 painéis** (4a, 4b, 5, 7, 9,
-8a, 8b, 8c) — a numeração dos painéis removidos (1, 2, 3, 6) não foi reaproveitada, para não gerar
-confusão com referências antigas a eles.
+completos** — *Saúde das operações no banco*, *Disponibilidade real do domínio*, *Origem
+geográfica: permitidos vs. bloqueados* e *Bloqueios por abuso (rate-limit)* — atendendo ao mínimo
+de 4 exigido pelo enunciado, mais **1 painel de referência operacional** (*Bastidores*, fora dessa
+exigência, decisão explícita do usuário), implementado em 3 sub-painéis (CPU, memória,
+instâncias). No Grafana isso totaliza **8 painéis**. Os nomes dos painéis são diretos, sem
+numeração — as referências cruzadas no texto abaixo usam o nome de cada um.
 
 ---
 
-### Painel 4 — Saúde das operações no banco de dados (visão do backend)
+### Saúde das operações no banco de dados (visão do backend)
 
 1. **Pergunta**: as chamadas do backend ao MongoDB Atlas estão funcionando, e com qual duração?
 2. **Motivo**: distinguir "a API falhou" de "o banco falhou" — sem isso um 500 genérico não diz
@@ -148,7 +149,7 @@ confusão com referências antigas a eles.
 
 ---
 
-### Painel 5 — Disponibilidade real do domínio
+### Disponibilidade real do domínio
 
 1. **Pergunta**: a aplicação (front-end e API) está de fato acessível pelo domínio público
    configurado?
@@ -177,7 +178,7 @@ confusão com referências antigas a eles.
 
 ---
 
-### Painel 7 — Origem geográfica dos acessos: permitidos vs. bloqueados
+### Origem geográfica dos acessos: permitidos vs. bloqueados
 
 1. **Pergunta**: de quais países vêm as chamadas à API, e as tentativas de países bloqueados (ex.:
    Coreia do Norte) estão sendo de fato rejeitadas?
@@ -221,17 +222,19 @@ confusão com referências antigas a eles.
 
 ---
 
-### Painel 9 — Bloqueios por abuso (rate-limit)
+### Bloqueios por abuso (rate-limit)
 
 1. **Pergunta**: a regra de rate-based-ban do Cloud Armor (100 requisições/min por IP → ban de 10
    minutos) está de fato acionando, e com que frequência — independente do bloqueio geográfico do
-   Painel 7?
-2. **Motivo**: o Painel 7 responde "de onde vêm os acessos e se região bloqueada é rejeitada"; este
-   painel responde uma pergunta diferente — "alguém está abusando da API por volume (não por
-   origem), e a defesa contra isso está funcionando?". Sem ele, a regra de rate-limit (documentada
-   desde a Entrega 1) fica tão "no papel" quanto o bloqueio geográfico estava antes do Painel 7.
+   painel de origem geográfica?
+2. **Motivo**: o painel de origem geográfica responde "de onde vêm os acessos e se região
+   bloqueada é rejeitada"; este painel responde uma pergunta diferente — "alguém está abusando da
+   API por volume (não por origem), e a defesa contra isso está funcionando?". Sem ele, a regra de
+   rate-limit (documentada desde a Entrega 1) fica tão "no papel" quanto o bloqueio geográfico
+   estava antes de ganhar seu próprio painel.
 3. **Origem dos dados**: mesmos logs de requisição do Load Balancer com Cloud Armor anexado
-   (`api-bs`) do Painel 7, campo `jsonPayload.enforcedSecurityPolicy.{configuredAction,outcome}`;
+   (`api-bs`) usados pela origem geográfica, campo
+   `jsonPayload.enforcedSecurityPolicy.{configuredAction,outcome}`;
    mesma log-based metric `lb_requests_by_region` (nenhuma métrica nova foi criada), agrupada por
    `configured_action` em vez de `region_code` — é isso que separa este painel do bloqueio
    geográfico: `configured_action=RATE_BASED_BAN` identifica avaliações pela regra de taxa,
@@ -249,8 +252,8 @@ confusão com referências antigas a eles.
    foi banido por 10 minutos.
 8. **Critérios de atenção**: qualquer ocorrência de `outcome=DENY` já é digna de atenção — em
    condições normais de uso da turma, não se espera que ninguém bata o limite; se acontecer de
-   forma repetida vinda do mesmo período, vale cruzar com o Painel 7 para ver se também é uma
-   região que deveria estar geo-bloqueada.
+   forma repetida vinda do mesmo período, vale cruzar com a origem geográfica para ver se também é
+   uma região que deveria estar geo-bloqueada.
 9. **Ação decorrente**: se `outcome=DENY` aparecer sem explicação (não foi um teste do grupo),
    investigar o IP de origem via log bruto do Load Balancer e decidir se merece bloqueio permanente
    (regra geográfica ou de IP) além do ban temporário automático.
@@ -261,11 +264,12 @@ confusão com referências antigas a eles.
     suficiente para acionar o ban de verdade — isso exigiria disparar 100+ requisições em menos de
     um minuto do mesmo IP, o que não foi feito para não sobrecarregar desnecessariamente a aplicação
     em produção durante os testes desta sessão. Documentado aqui como limitação honesta, no mesmo
-    padrão já usado para o teste geográfico pendente do Painel 7 (linha 5 da tabela da Seção 6).
+    padrão já usado para o teste geográfico pendente da origem geográfica (linha 5 da tabela da
+    Seção 6).
 
 ---
 
-### Painel 8 — "Bastidores": CPU, memória e instâncias do Cloud Run (referência operacional)
+### "Bastidores": CPU, memória e instâncias do Cloud Run (referência operacional)
 
 **Fora da fundamentação de 10 itens acima, por decisão explícita do usuário.** Este projeto tinha a
 restrição deliberada de que os painéis fundamentados fossem só de aplicação/usuário, não de
@@ -295,11 +299,12 @@ série temporal e viraram indicadores do **valor atual**:
 
 - `front-bb` (backend-bucket do front-end) não gera log de requisição — testado nesta sessão via
   API do Compute Engine (v1 e beta, PATCH e PUT), campo `logConfig` não é aplicado a esse tipo de
-  backend. O Painel 7 cobre só tráfego de API.
+  backend. A origem geográfica cobre só tráfego de API.
 - Ausência de dado num painel, num dado período, significa **ausência de coleta ou de tráfego**,
-  não "ausência de erro" — por exemplo, o Painel 9 (rate-limit) sem nenhuma linha `outcome=DENY`
-  não significa que a proteção parou de funcionar, significa que ninguém excedeu o limite naquele
-  intervalo. Essa distinção é importante e é feita explicitamente aqui porque o enunciado pede que
+  não "ausência de erro" — por exemplo, o painel de bloqueios por abuso (rate-limit) sem nenhuma
+  linha `outcome=DENY` não significa que a proteção parou de funcionar, significa que ninguém
+  excedeu o limite naquele intervalo. Essa distinção é importante e é feita explicitamente aqui
+  porque o enunciado pede que
   ela não seja confundida.
 - `app_http_requests`, `app_http_request_duration` e `app_business_events` continuam sendo
   coletadas (o logger do backend não mudou), mas não alimentam mais nenhum painel do dashboard
@@ -314,27 +319,28 @@ série temporal e viraram indicadores do **valor atual**:
 `https://todo-2026-m2.duckdns.org`, em **2026-09-17, 23:11:54Z–23:12:04Z (UTC)**. Backend na
 revisão `backend-00004-9tq` (primeira revisão com a instrumentação desta entrega).
 
-> Nota sobre esta tabela: linhas de evidência que só validavam os Painéis 1, 2, 3 ou 6 (removidos
-> na reestruturação de escopo) foram retiradas daqui. A linha da falha controlada, que originalmente
-> citava o Painel 2 além do 4a/4b, foi mantida e editada para referenciar só os painéis que
-> continuam existindo — conforme pedido explicitamente ao reestruturar o escopo.
+> Nota sobre esta tabela: linhas de evidência que só validavam os painéis de uso, taxa de erro,
+> latência ou funil (removidos na reestruturação de escopo) foram retiradas daqui. A linha da falha
+> controlada, que originalmente também citava a taxa de erro, foi mantida e editada para
+> referenciar só os painéis que continuam existindo — conforme pedido explicitamente ao
+> reestruturar o escopo.
 
 | # | Cenário | Esperado | Observado | Painel |
 |---|---|---|---|---|
-| 1 | `GET /api/health` | 200, usado pelo Uptime Check | HTTP 200 confirmado por `curl` | 5 |
-| 2 | **Falha controlada**: `PATCH /todos/id-invalido` | HTTP 500; `db_operation` com `result=failure`, `error_type=CastError` | HTTP 500 confirmado; par de logs com `request_id` compartilhado capturado (Seção 2); no Painel 4a, a operação `update` aparece com `result=failure` no minuto do teste, e no Painel 4b a duração dessa chamada (2,06 ms) entra na distribuição de `update` | 4a, 4b |
-| 3 | Uptime Check (`todo-frontend-home`, `todo-api-health`) nas últimas 3h | `check_passed` ≈ 100% | consulta MQL retornou `fraction_true = 1` (100%) para os dois checks | 5 |
-| 4 | Origem geográfica do tráfego real (LB + Cloud Armor) | países reais aparecendo com `outcome=ACCEPT` | consulta MQL retornou séries reais de `BR`, `BE`, `PY`, `US`, `SG`, todas `ACCEPT` — nenhuma tentativa de região bloqueada (`KP`/`DE`) ocorreu de fato nesta janela, como esperado (ver limitação abaixo) | 7 |
-| 5 | **Pendente**: acesso via VPS na Alemanha, após ampliar a regra geográfica para incluir `DE` | `region_code=DE`, `outcome=DENY`, HTTP 403 no cliente | a executar pelo grupo; preencher aqui com horário, captura e a linha de log real quando feito | 7 |
-| 6 | Métricas nativas do Cloud Run, valor pontual (gauge, últimos 10 min) | valores plausíveis de CPU/memória/instâncias | CPU = 0,12%, memória = 19,37%, instâncias: 1 ativa + 1 ociosa (consistente com `min-instances=2`) — confirmado via `/api/ds/query` com a query final (sem `every`, `timeFrom: 10m`) | 8a/8b/8c |
-| 7 | Regra de rate-based-ban (`configured_action=RATE_BASED_BAN`) nas últimas 6h | mistura de `outcome=ACCEPT` (normal) e, idealmente, algum `DENY` (banimento real) | consulta MQL retornou **só `outcome=ACCEPT`** (`RATE_LIMIT_THRESHOLD_CONFORM`) — nenhuma requisição desta sessão excedeu 100/min de um único IP. **Validação pendente**: falta gerar tráfego acima do limite de propósito (não feito nesta sessão para não sobrecarregar a produção) | 9 |
+| 1 | `GET /api/health` | 200, usado pelo Uptime Check | HTTP 200 confirmado por `curl` | Disponibilidade real do domínio |
+| 2 | **Falha controlada**: `PATCH /todos/id-invalido` | HTTP 500; `db_operation` com `result=failure`, `error_type=CastError` | HTTP 500 confirmado; par de logs com `request_id` compartilhado capturado (Seção 2); em *Operações no banco — sucesso e falha*, a operação `update` aparece com `result=failure` no minuto do teste, e em *Duração das operações no banco* essa chamada (2,06 ms) entra na distribuição de `update` | Saúde das operações no banco |
+| 3 | Uptime Check (`todo-frontend-home`, `todo-api-health`) nas últimas 3h | `check_passed` ≈ 100% | consulta MQL retornou `fraction_true = 1` (100%) para os dois checks | Disponibilidade real do domínio |
+| 4 | Origem geográfica do tráfego real (LB + Cloud Armor) | países reais aparecendo com `outcome=ACCEPT` | consulta MQL retornou séries reais de `BR`, `BE`, `PY`, `US`, `SG`, todas `ACCEPT` — nenhuma tentativa de região bloqueada (`KP`/`DE`) ocorreu de fato nesta janela, como esperado (ver limitação abaixo) | Origem geográfica |
+| 5 | **Pendente**: acesso via VPS na Alemanha, após ampliar a regra geográfica para incluir `DE` | `region_code=DE`, `outcome=DENY`, HTTP 403 no cliente | a executar pelo grupo; preencher aqui com horário, captura e a linha de log real quando feito | Origem geográfica |
+| 6 | Métricas nativas do Cloud Run, valor pontual (gauge, últimos 10 min) | valores plausíveis de CPU/memória/instâncias | CPU = 0,12%, memória = 19,37%, instâncias: 1 ativa + 1 ociosa (consistente com `min-instances=2`) — confirmado via `/api/ds/query` com a query final (sem `every`, `timeFrom: 10m`) | Bastidores |
+| 7 | Regra de rate-based-ban (`configured_action=RATE_BASED_BAN`) nas últimas 6h | mistura de `outcome=ACCEPT` (normal) e, idealmente, algum `DENY` (banimento real) | consulta MQL retornou **só `outcome=ACCEPT`** (`RATE_LIMIT_THRESHOLD_CONFORM`) — nenhuma requisição desta sessão excedeu 100/min de um único IP. **Validação pendente**: falta gerar tráfego acima do limite de propósito (não feito nesta sessão para não sobrecarregar a produção) | Bloqueios por abuso (rate-limit) |
 
 **Caminho evento → log → painel demonstrado** (item obrigatório do enunciado): documentado na
 Seção 2 com o par de registros reais do teste 2 — mesmo `request_id` no `http_request` (rota
 `/todos/:id`, status 500, que não alimenta mais nenhum painel fundamentado após a reestruturação)
 e no `db_operation` (`operation=update`, `result=failure`, `error_type=CastError`), que alimenta a
-log-based metric consultada pelo Painel 4a diretamente no Cloud Monitoring, consultado pelo
-Grafana.
+log-based metric consultada por *Operações no banco — sucesso e falha* diretamente no Cloud
+Monitoring, consultado pelo Grafana.
 
 **Correspondência diagrama ↔ ambiente real**: coberta pelos comandos `gcloud`/`curl` rodados ao
 vivo nesta sessão contra o projeto `todo-infra-2026-m2` (Seções 1–3 deste documento e os dois
@@ -352,7 +358,8 @@ do grupo). Por isso a regra foi ampliada nesta sessão para também bloquear a A
 `origin.region_code == 'KP' || origin.region_code == 'DE'`, confirmada via
 `gcloud compute security-policies describe todo-armor` (e `todo-armor-edge`) logo após a mudança
 — e o grupo vai testar a partir de uma VPS própria hospedada na Alemanha, o que deve gerar uma
-linha real de `DENY` com `region_code=DE` no Painel 7 (linha 10 da tabela acima, pendente).
+linha real de `DENY` com `region_code=DE` no painel de origem geográfica (linha 5 da tabela acima,
+pendente).
 
 ## 7. Queries MQL usadas em cada painel (reprodutibilidade)
 
@@ -360,36 +367,36 @@ Todas testadas e validadas com dado real via `/api/ds/query` do Grafana antes de
 dashboard (não apenas assumidas). Também estão embutidas em
 `observability/grafana/dashboard-observabilidade.json`.
 
-Queries dos Painéis 1, 2, 3 e 6 foram removidas desta lista junto com os painéis (histórico
-disponível no controle de versão do git, se precisar consultar).
+Queries dos painéis de uso, taxa de erro, latência e funil foram removidas desta lista junto com
+os painéis (histórico disponível no controle de versão do git, se precisar consultar).
 
 ```
-Painel 4a — fetch cloud_run_revision
+Operações no banco — sucesso e falha — fetch cloud_run_revision
   | metric 'logging.googleapis.com/user/app_db_operations'
   | align rate(1m) | group_by [metric.operation, metric.result], sum(val())
 
-Painel 4b — fetch cloud_run_revision
+Duração das operações no banco — fetch cloud_run_revision
   | metric 'logging.googleapis.com/user/app_db_operation_duration'
   | group_by [metric.operation], percentile(val(), 95) | every 1m
 
-Painel 5 — fetch uptime_url
+Disponibilidade real do domínio — fetch uptime_url
   | metric 'monitoring.googleapis.com/uptime_check/check_passed'
   | align next_older(5m) | group_by [resource.host, metric.check_id], fraction_true(val())
 
-Painel 7 — fetch l7_lb_rule
+Origem geográfica — fetch l7_lb_rule
   | metric 'logging.googleapis.com/user/lb_requests_by_region'
   | align rate(5m) | group_by [metric.region_code, metric.outcome], sum(val())
 
-Painel 9 — fetch l7_lb_rule
+Bloqueios por abuso (rate-limit) — fetch l7_lb_rule
   | metric 'logging.googleapis.com/user/lb_requests_by_region'
   | align rate(5m) | group_by [metric.configured_action, metric.outcome], sum(val())
 
-Painel 8a/8b — fetch cloud_run_revision
+Bastidores: CPU / Memória — fetch cloud_run_revision
   | metric 'run.googleapis.com/container/cpu/utilizations' (ou .../memory/utilizations)
   | group_by [], mean(val())
   (painel tipo gauge, sem "every" — instantâneo, timeFrom: 10m, reduzido para lastNotNull)
 
-Painel 8c — fetch cloud_run_revision
+Bastidores: Instâncias — fetch cloud_run_revision
   | metric 'run.googleapis.com/container/instance_count'
   | group_by [metric.state], mean(val())
   (painel tipo stat, sem "every" — instantâneo, timeFrom: 10m, reduzido para lastNotNull)

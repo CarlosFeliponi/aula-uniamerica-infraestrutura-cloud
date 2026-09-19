@@ -1,175 +1,7 @@
 {
-  "description": "8 paineis (7 fundamentados de aplicacao/usuario + 1 de referencia operacional) sobre o Cloud Monitoring do projeto todo-infra-2026-m2.",
+  "description": "8 paineis Grafana: 4 fundamentados com os 10 itens exigidos (4, 5, 7, 9) + 1 painel de referencia operacional em 3 sub-paineis (8a/8b/8c), sobre o Cloud Monitoring do projeto todo-infra-2026-m2.",
   "id": 2052051799293952,
   "panels": [
-    {
-      "datasource": {
-        "type": "stackdriver",
-        "uid": "cfykm3nv47jswd"
-      },
-      "description": "Requisi\u00e7\u00f5es/seg por rota e m\u00e9todo (app_http_requests, exclui /health). Pergunta: quais opera\u00e7\u00f5es s\u00e3o mais usadas e como o volume varia no tempo?",
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "drawStyle": "line",
-            "fillOpacity": 10
-          },
-          "unit": "reqps"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 0
-      },
-      "id": 1,
-      "options": {
-        "legend": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "displayMode": "table",
-          "placement": "bottom"
-        },
-        "tooltip": {
-          "mode": "multi"
-        }
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "stackdriver",
-            "uid": "cfykm3nv47jswd"
-          },
-          "queryType": "timeSeriesQuery",
-          "refId": "A",
-          "timeSeriesQuery": {
-            "projectName": "todo-infra-2026-m2",
-            "query": "fetch cloud_run_revision | metric 'logging.googleapis.com/user/app_http_requests' | align rate(1m) | group_by [metric.route, metric.method], sum(val())"
-          }
-        }
-      ],
-      "title": "Painel 1 \u2014 Uso por opera\u00e7\u00e3o (volume por rota/m\u00e9todo)",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "stackdriver",
-        "uid": "cfykm3nv47jswd"
-      },
-      "description": "Percentual de respostas 4xx/5xx por rota (numerador: app_http_requests com status_class 4xx ou 5xx; denominador: total da mesma rota). Pergunta: quais opera\u00e7\u00f5es est\u00e3o falhando?",
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "drawStyle": "line",
-            "fillOpacity": 10
-          },
-          "unit": "percent"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 0
-      },
-      "id": 2,
-      "options": {
-        "legend": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "displayMode": "table",
-          "placement": "bottom"
-        },
-        "tooltip": {
-          "mode": "multi"
-        }
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "stackdriver",
-            "uid": "cfykm3nv47jswd"
-          },
-          "queryType": "timeSeriesQuery",
-          "refId": "A",
-          "timeSeriesQuery": {
-            "projectName": "todo-infra-2026-m2",
-            "query": "{ t_errors: fetch cloud_run_revision | metric 'logging.googleapis.com/user/app_http_requests' | filter metric.status_class =~ '4xx|5xx' | align rate(5m) | group_by [metric.route], sum(val()) ; t_total: fetch cloud_run_revision | metric 'logging.googleapis.com/user/app_http_requests' | align rate(5m) | group_by [metric.route], sum(val()) } | join | value [error_rate_pct: val(0) / val(1) * 100]"
-          }
-        }
-      ],
-      "title": "Painel 2 \u2014 Taxa de erro por opera\u00e7\u00e3o",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "stackdriver",
-        "uid": "cfykm3nv47jswd"
-      },
-      "description": "Dura\u00e7\u00e3o das requisi\u00e7\u00f5es (app_http_request_duration), mediana e p95 por rota, em ms. Pergunta: quais opera\u00e7\u00f5es demoram mais, e quando?",
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "drawStyle": "line",
-            "fillOpacity": 10
-          },
-          "unit": "ms"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 24,
-        "x": 0,
-        "y": 8
-      },
-      "id": 3,
-      "options": {
-        "legend": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "displayMode": "table",
-          "placement": "bottom"
-        },
-        "tooltip": {
-          "mode": "multi"
-        }
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "stackdriver",
-            "uid": "cfykm3nv47jswd"
-          },
-          "queryType": "timeSeriesQuery",
-          "refId": "A",
-          "timeSeriesQuery": {
-            "projectName": "todo-infra-2026-m2",
-            "query": "fetch cloud_run_revision | metric 'logging.googleapis.com/user/app_http_request_duration' | group_by [metric.route], percentile(val(), 95) | every 1m"
-          }
-        },
-        {
-          "datasource": {
-            "type": "stackdriver",
-            "uid": "cfykm3nv47jswd"
-          },
-          "queryType": "timeSeriesQuery",
-          "refId": "B",
-          "timeSeriesQuery": {
-            "projectName": "todo-infra-2026-m2",
-            "query": "fetch cloud_run_revision | metric 'logging.googleapis.com/user/app_http_request_duration' | group_by [metric.route], percentile(val(), 50) | every 1m"
-          }
-        }
-      ],
-      "title": "Painel 3 \u2014 Tempo de resposta por opera\u00e7\u00e3o (p50/p95)",
-      "type": "timeseries"
-    },
     {
       "datasource": {
         "type": "stackdriver",
@@ -190,9 +22,9 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 16
+        "y": 0
       },
-      "id": 4,
+      "id": 1,
       "options": {
         "legend": {
           "calcs": [
@@ -242,9 +74,9 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 16
+        "y": 0
       },
-      "id": 5,
+      "id": 2,
       "options": {
         "legend": {
           "calcs": [
@@ -294,9 +126,9 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 24
+        "y": 8
       },
-      "id": 6,
+      "id": 3,
       "options": {
         "legend": {
           "calcs": [
@@ -331,7 +163,7 @@
         "type": "stackdriver",
         "uid": "cfykm3nv47jswd"
       },
-      "description": "Eventos de neg\u00f3cio (app_business_events) por tipo: criada, conclu\u00edda, reaberta, apagada. Pergunta: como as pessoas de fato usam a lista?",
+      "description": "Requisi\u00e7\u00f5es \u00e0 API avaliadas pela regra de rate-based-ban do Cloud Armor (100 req/min/IP, ban 10 min), por configured_action e outcome (lb_requests_by_region). Pergunta: a regra de rate-limit est\u00e1 de fato acionando, e com que frequ\u00eancia \u2014 independente do bloqueio geogr\u00e1fico do Painel 7?",
       "fieldConfig": {
         "defaults": {
           "custom": {
@@ -346,9 +178,9 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 24
+        "y": 8
       },
-      "id": 7,
+      "id": 4,
       "options": {
         "legend": {
           "calcs": [
@@ -371,11 +203,11 @@
           "refId": "A",
           "timeSeriesQuery": {
             "projectName": "todo-infra-2026-m2",
-            "query": "fetch cloud_run_revision | metric 'logging.googleapis.com/user/app_business_events' | align rate(1m) | group_by [metric.event_name], sum(val())"
+            "query": "fetch l7_lb_rule | metric 'logging.googleapis.com/user/lb_requests_by_region' | align rate(5m) | group_by [metric.configured_action, metric.outcome], sum(val())"
           }
         }
       ],
-      "title": "Painel 6 \u2014 Funil de conclus\u00e3o de tarefas",
+      "title": "Painel 9 \u2014 Bloqueios por abuso (rate-limit)",
       "type": "timeseries"
     },
     {
@@ -398,9 +230,9 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 32
+        "y": 16
       },
-      "id": 8,
+      "id": 5,
       "options": {
         "legend": {
           "calcs": [
@@ -435,12 +267,27 @@
         "type": "stackdriver",
         "uid": "cfykm3nv47jswd"
       },
-      "description": "Refer\u00eancia operacional (fora da fundamenta\u00e7\u00e3o de 10 itens, decis\u00e3o expl\u00edcita do usu\u00e1rio). Utiliza\u00e7\u00e3o de CPU do servi\u00e7o backend.",
+      "description": "Refer\u00eancia operacional (fora da fundamenta\u00e7\u00e3o de 10 itens, decis\u00e3o expl\u00edcita do usu\u00e1rio). Utiliza\u00e7\u00e3o atual de CPU do servi\u00e7o backend (valor instant\u00e2neo, \u00faltimos 10 min).",
       "fieldConfig": {
         "defaults": {
-          "custom": {
-            "drawStyle": "line",
-            "fillOpacity": 10
+          "max": 1,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 0.5
+              },
+              {
+                "color": "red",
+                "value": 0.8
+              }
+            ]
           },
           "unit": "percentunit"
         },
@@ -450,20 +297,20 @@
         "h": 8,
         "w": 8,
         "x": 0,
-        "y": 40
+        "y": 24
       },
-      "id": 9,
+      "id": 6,
       "options": {
-        "legend": {
+        "orientation": "auto",
+        "reduceOptions": {
           "calcs": [
             "lastNotNull"
           ],
-          "displayMode": "table",
-          "placement": "bottom"
+          "fields": "",
+          "values": false
         },
-        "tooltip": {
-          "mode": "multi"
-        }
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
       },
       "targets": [
         {
@@ -475,24 +322,40 @@
           "refId": "A",
           "timeSeriesQuery": {
             "projectName": "todo-infra-2026-m2",
-            "query": "fetch cloud_run_revision | metric 'run.googleapis.com/container/cpu/utilizations' | group_by [], mean(val()) | every 1m"
+            "query": "fetch cloud_run_revision | metric 'run.googleapis.com/container/cpu/utilizations' | group_by [], mean(val())"
           }
         }
       ],
+      "timeFrom": "10m",
       "title": "Painel 8a \u2014 Bastidores: CPU (Cloud Run)",
-      "type": "timeseries"
+      "type": "gauge"
     },
     {
       "datasource": {
         "type": "stackdriver",
         "uid": "cfykm3nv47jswd"
       },
-      "description": "Refer\u00eancia operacional (fora da fundamenta\u00e7\u00e3o de 10 itens). Utiliza\u00e7\u00e3o de mem\u00f3ria do servi\u00e7o backend.",
+      "description": "Refer\u00eancia operacional (fora da fundamenta\u00e7\u00e3o de 10 itens). Utiliza\u00e7\u00e3o atual de mem\u00f3ria do servi\u00e7o backend (valor instant\u00e2neo, \u00faltimos 10 min).",
       "fieldConfig": {
         "defaults": {
-          "custom": {
-            "drawStyle": "line",
-            "fillOpacity": 10
+          "max": 1,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 0.5
+              },
+              {
+                "color": "red",
+                "value": 0.8
+              }
+            ]
           },
           "unit": "percentunit"
         },
@@ -502,20 +365,20 @@
         "h": 8,
         "w": 8,
         "x": 8,
-        "y": 40
+        "y": 24
       },
-      "id": 10,
+      "id": 7,
       "options": {
-        "legend": {
+        "orientation": "auto",
+        "reduceOptions": {
           "calcs": [
             "lastNotNull"
           ],
-          "displayMode": "table",
-          "placement": "bottom"
+          "fields": "",
+          "values": false
         },
-        "tooltip": {
-          "mode": "multi"
-        }
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
       },
       "targets": [
         {
@@ -527,25 +390,22 @@
           "refId": "A",
           "timeSeriesQuery": {
             "projectName": "todo-infra-2026-m2",
-            "query": "fetch cloud_run_revision | metric 'run.googleapis.com/container/memory/utilizations' | group_by [], mean(val()) | every 1m"
+            "query": "fetch cloud_run_revision | metric 'run.googleapis.com/container/memory/utilizations' | group_by [], mean(val())"
           }
         }
       ],
+      "timeFrom": "10m",
       "title": "Painel 8b \u2014 Bastidores: Mem\u00f3ria (Cloud Run)",
-      "type": "timeseries"
+      "type": "gauge"
     },
     {
       "datasource": {
         "type": "stackdriver",
         "uid": "cfykm3nv47jswd"
       },
-      "description": "Refer\u00eancia operacional (fora da fundamenta\u00e7\u00e3o de 10 itens). Contagem de inst\u00e2ncias ativas/ociosas do servi\u00e7o backend.",
+      "description": "Refer\u00eancia operacional (fora da fundamenta\u00e7\u00e3o de 10 itens). Contagem atual de inst\u00e2ncias ativas/ociosas do servi\u00e7o backend.",
       "fieldConfig": {
         "defaults": {
-          "custom": {
-            "drawStyle": "line",
-            "fillOpacity": 10
-          },
           "unit": "short"
         },
         "overrides": []
@@ -554,20 +414,20 @@
         "h": 8,
         "w": 8,
         "x": 16,
-        "y": 40
+        "y": 24
       },
-      "id": 11,
+      "id": 8,
       "options": {
-        "legend": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "reduceOptions": {
           "calcs": [
             "lastNotNull"
           ],
-          "displayMode": "table",
-          "placement": "bottom"
+          "fields": "",
+          "values": false
         },
-        "tooltip": {
-          "mode": "multi"
-        }
+        "textMode": "value_and_name"
       },
       "targets": [
         {
@@ -579,12 +439,13 @@
           "refId": "A",
           "timeSeriesQuery": {
             "projectName": "todo-infra-2026-m2",
-            "query": "fetch cloud_run_revision | metric 'run.googleapis.com/container/instance_count' | group_by [metric.state], mean(val()) | every 1m"
+            "query": "fetch cloud_run_revision | metric 'run.googleapis.com/container/instance_count' | group_by [metric.state], mean(val())"
           }
         }
       ],
+      "timeFrom": "10m",
       "title": "Painel 8c \u2014 Bastidores: Inst\u00e2ncias (Cloud Run)",
-      "type": "timeseries"
+      "type": "stat"
     }
   ],
   "refresh": "1m",
@@ -601,5 +462,5 @@
   "timezone": "utc",
   "title": "Todo List \u2014 Observabilidade (Entrega 2)",
   "uid": "todo-observabilidade-e2",
-  "version": 1
+  "version": 2
 }

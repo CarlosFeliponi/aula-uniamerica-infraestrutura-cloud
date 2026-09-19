@@ -25,7 +25,7 @@ flowchart LR
 
     subgraph ViewBox["Consulta / apresentação"]
         SA["Service account grafana-viewer-sa<br/>roles/monitoring.viewer — só leitura<br/>chave usada apenas na configuração do data source"]
-        Grafana["Grafana Cloud (SaaS)<br/>data source: Google Cloud Monitoring<br/>7 painéis de aplicação/usuário + 1 painel de referência operacional"]
+        Grafana["Grafana Cloud (SaaS)<br/>data source: Google Cloud Monitoring<br/>4 painéis fundamentados (4, 5, 7, 9) + 1 painel de referência operacional (8, em 3 sub-painéis)<br/>8 painéis no total"]
     end
 
     CloudRun -->|"stdout, JSON estruturado"| CloudLogging
@@ -67,6 +67,7 @@ flowchart LR
   isso o painel de origem geográfica reflete só o tráfego de API (`api-bs`), não os acessos aos
   arquivos estáticos do front-end.
 - **Painel de referência operacional**: CPU, memória e contagem de instâncias do Cloud Run
-  aparecem no Grafana como um painel único, separado dos 7 painéis de aplicação/usuário — decisão
-  explícita do usuário, fora da restrição original de "sem métricas de infraestrutura" que orientou
-  os outros painéis, e por isso tratado à parte (sem a fundamentação de 10 itens dos demais).
+  aparecem no Grafana como o Painel 8 (em 3 sub-painéis: 8a/8b/8c), separado dos 4 painéis
+  fundamentados de aplicação/usuário (4, 5, 7 e 9) — decisão explícita do usuário, fora da
+  restrição original de "sem métricas de infraestrutura" que orientou os outros painéis, e por
+  isso tratado à parte (sem a fundamentação de 10 itens dos demais).

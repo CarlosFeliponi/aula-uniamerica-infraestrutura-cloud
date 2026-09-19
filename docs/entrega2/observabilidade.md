@@ -72,13 +72,14 @@ controlada (Seção 6) — note o mesmo `request_id` nos dois, é a correlação
  "request_id": "634ddced-c0a5-45e3-81d4-cc66609ea76f", "result": "failure", "service": "backend"}
 ```
 
-O primeiro registro alimenta `app_http_requests` (rota `/todos/:id`, `status_class=5xx`) — é o que
-aparece no **Painel 2** (taxa de erro) subindo naquele minuto. O segundo alimenta
-`app_db_operations` (`operation=update`, `result=failure`) — é o que aparece no **Painel 4a**. O
-`request_id` compartilhado comprova que os dois eventos vêm da mesma requisição HTTP: o usuário
-tentou `PATCH /todos/id-invalido`, o Express roteou para `/todos/:id`, a chamada ao Mongoose
-(`findById`) lançou `CastError`, o backend logou a falha do banco e depois devolveu HTTP 500 — a
-cadeia completa, do evento na aplicação até os dois painéis.
+O primeiro registro alimenta `app_http_requests` — essa métrica continua sendo coletada, mas desde
+a reestruturação de escopo (ver nota na Seção 3) não alimenta mais nenhum painel fundamentado;
+fica aqui só como o lado "requisição HTTP" da correlação. O segundo alimenta `app_db_operations`
+(`operation=update`, `result=failure`) — é o que aparece no **Painel 4a**. O `request_id`
+compartilhado comprova que os dois eventos vêm da mesma requisição HTTP: o usuário tentou
+`PATCH /todos/id-invalido`, o Express roteou para `/todos/:id`, a chamada ao Mongoose (`findById`)
+lançou `CastError`, o backend logou a falha do banco e depois devolveu HTTP 500 — a cadeia
+completa, do evento na aplicação até o Painel 4a.
 
 ## 3. Log-based metrics e Uptime Checks (configuração reproduzível)
 
@@ -100,96 +101,21 @@ Google):
 - `todo-api-health` → `https://todo-2026-m2.duckdns.org/api/health` (valida também o corpo da
   resposta, não só o código HTTP)
 
-## 4. Os 8 painéis
+**Nota de honestidade sobre escopo**: após uma reestruturação de prioridades (ver Seção 4), os
+painéis que consumiam `app_http_requests`, `app_http_request_duration` e `app_business_events`
+foram removidos do dashboard. As três métricas continuam sendo coletadas normalmente (o
+`logger.js` do backend não mudou, e remover a coleta não foi pedido) — só não são mais
+visualizadas em nenhum painel fundamentado nem de referência. Isso é declarado aqui para não dar a
+entender, silenciosamente, que elas ainda alimentam algo.
 
-Painéis 1–7: aplicação/usuário, fundamentação completa dos 10 itens exigidos. Painel 8: referência
-operacional, fora dessa exigência (decisão explícita do usuário, ver nota ao final).
+## 4. Os painéis
 
----
-
-### Painel 1 — Uso por operação (volume por funcionalidade)
-
-1. **Pergunta**: quais operações do Todo List (listar, criar, concluir, apagar) são mais usadas, e
-   como o volume varia ao longo do tempo?
-2. **Motivo**: entender quais funcionalidades geram carga/valor de uso real, priorizar atenção, e
-   detectar quedas de uso anormais.
-3. **Origem dos dados**: evento `http_request` do backend; log-based metric `app_http_requests`
-   (contador), campos `route`/`method`, excluindo `/health`.
-4. **Consulta e cálculo**: soma de `app_http_requests` agrupada por `route` e `method`, alinhada
-   por intervalo de 1 minuto. Unidade: requisições por minuto (ou contagem absoluta no período
-   selecionado).
-5. **Recorte temporal**: período ajustável no Grafana (padrão sugerido: últimas 6h); agregação em
-   janelas de 1–5 min; atualização automática a cada 1 min; timestamps de origem em UTC.
-6. **Visualização**: série temporal com uma linha por rota — permite comparar volume relativo entre
-   operações e identificar picos/quedas, que é o que a pergunta pede (variação no tempo).
-7. **Interpretação**: mais volume em `GET /todos` é esperado (toda visita à tela dispara uma
-   listagem); ausência total de dados em todas as rotas = sem tráfego no período, não é sinônimo de
-   erro (ver Painel 5 para saber se é indisponibilidade).
-8. **Critérios de atenção**: queda abrupta e simultânea em todas as rotas (cruzar com Painel 5);
-   crescimento muito acima do padrão observado nos testes controlados (cruzar com Painel 7).
-9. **Ação decorrente**: se cair a zero, checar disponibilidade (Painel 5) e logs de erro; se crescer
-   de forma anormal, checar a origem geográfica (Painel 7).
-10. **Validação e limitações**: `observability/gerar-trafego.sh` gera N ciclos de criação/listagem;
-    o painel deve mostrar a contagem correspondente no período do teste (evidência na Seção 6).
-    Limitação: mede requisições, não usuários — não permite concluir "quantas pessoas" usaram o
-    app, só "quantas operações" ocorreram.
-
----
-
-### Painel 2 — Taxa de erro por operação
-
-1. **Pergunta**: quais operações estão falhando, e qual fração das tentativas resulta em erro
-   (4xx/5xx)?
-2. **Motivo**: detectar regressões, bugs ou abuso que afetam a experiência real do usuário,
-   diferenciando erro de validação (4xx) de falha da aplicação (5xx).
-3. **Origem dos dados**: mesmo evento `http_request` / métrica `app_http_requests`, usando o label
-   `status_class`.
-4. **Consulta e cálculo**: numerador = soma de `app_http_requests` com `status_class` em
-   `{4xx,5xx}`, agrupada por `route`; denominador = soma total de `app_http_requests` da mesma
-   `route`, no mesmo período; resultado × 100 = percentual de erro por rota.
-5. **Recorte temporal**: igual ao Painel 1.
-6. **Visualização**: série temporal em % por rota, com tabela auxiliar de contagem absoluta de erro
-   — o percentual sozinho esconde volume baixo (1 erro em 1 tentativa = 100%, não é uma crise).
-7. **Interpretação**: taxa próxima de 0% é o esperado; picos localizados numa rota apontam para uma
-   classe de erro específica, a investigar no `error_type` do log bruto.
-8. **Critérios de atenção**: sem histórico de produção de longo prazo, não há uma referência
-   externa de "taxa aceitável" — a referência inicial usada é o comportamento observado nos testes
-   controlados desta entrega (Seção 6); qualquer taxa sustentada acima disso, por mais de alguns
-   minutos, motiva investigação. Essa limitação de referência é reconhecida explicitamente.
-9. **Ação decorrente**: filtrar os logs brutos por `route` + `status_class=5xx`, ler `error_type`/
-   `error_message`; se for `CastError`, é entrada inválida (não uma falha de infraestrutura); se
-   for erro de conexão, cruzar com o Painel 4.
-10. **Validação e limitações**: o teste controlado (`PATCH /todos/id-invalido`) deve aparecer como
-    erro na rota `/todos/:id`, método PATCH, no minuto do teste (evidência na Seção 6). Limitação:
-    o painel não diferencia "erro esperado do fluxo normal" de "bug real" — isso exige olhar o log
-    bruto; o painel só indica onde olhar.
-
----
-
-### Painel 3 — Tempo de resposta por operação
-
-1. **Pergunta**: quais operações demoram mais para responder, e em quais períodos?
-2. **Motivo**: latência alta prejudica a experiência mesmo sem erro — é um sinal distinto de
-   "funciona ou não".
-3. **Origem dos dados**: campo `duration_ms` do evento `http_request`; log-based metric de
-   distribuição `app_http_request_duration`.
-4. **Consulta e cálculo**: percentil 50 (mediana) e percentil 95 da distribuição, agrupados por
-   `route`, no período. Unidade: milissegundos.
-5. **Recorte temporal**: igual aos anteriores; percentis calculados sobre a janela de agregação
-   escolhida (ex.: 5 min).
-6. **Visualização**: série temporal com duas linhas por rota (p50 e p95) — mediana mostra o caso
-   comum, p95 mostra o pior caso que a maioria ainda sente; mais informativo que média, que é
-   distorcida por outliers.
-7. **Interpretação**: p50 baixo e estável é o esperado; p95 muito acima do p50 indica
-   variabilidade; crescimento sustentado dos dois pode indicar degradação (cruzar com Painel 4).
-8. **Critérios de atenção**: mesma ressalva do Painel 2 — limite inicial vem da observação dos
-   testes controlados, não de um SLA definido a priori.
-9. **Ação decorrente**: se a latência subir, cruzar com o Painel 4 para saber se o gargalo é a
-   aplicação ou a chamada ao Atlas.
-10. **Validação e limitações**: comparar o tempo observado no painel durante o teste de tráfego com
-    a duração medida pelo próprio script de teste (evidência na Seção 6). Limitação: mede o tempo
-    dentro do processo Node (do middleware até a resposta), não inclui a rede entre o navegador e o
-    Load Balancer.
+Depois de uma reestruturação de escopo, o dashboard tem **4 painéis fundamentados com os 10 itens
+completos — Painéis 4, 5, 7 e 9 — atendendo ao mínimo de 4 exigido pelo enunciado**, mais **1
+painel de referência operacional (Painel 8), fora dessa exigência**, decisão explícita do usuário,
+implementado em 3 sub-painéis (8a/8b/8c). No Grafana isso totaliza **8 painéis** (4a, 4b, 5, 7, 9,
+8a, 8b, 8c) — a numeração dos painéis removidos (1, 2, 3, 6) não foi reaproveitada, para não gerar
+confusão com referências antigas a eles.
 
 ---
 
@@ -251,32 +177,6 @@ operacional, fora dessa exigência (decisão explícita do usuário, ver nota ao
 
 ---
 
-### Painel 6 — Funil de conclusão de tarefas (uso real / produto)
-
-1. **Pergunta**: como as pessoas de fato usam a lista — quantas tarefas são criadas vs. concluídas
-   vs. reabertas vs. apagadas, e essa proporção muda com o tempo?
-2. **Motivo**: é a métrica de produto real, não de tráfego — mostra padrão de uso, não volume de
-   chamadas HTTP.
-3. **Origem dos dados**: evento `business_event` (`event_name`); métrica `app_business_events`.
-4. **Consulta e cálculo**: contagem de `app_business_events` agrupada por `event_name`, por
-   período.
-5. **Recorte temporal**: agregação diária ou por hora conforme o volume real; janela recomendada:
-   7 dias para padrão de uso, ou o período do teste controlado para validação.
-6. **Visualização**: barras empilhadas/proporção por `event_name` ao longo do tempo — evidencia a
-   relação entre os tipos de evento, que é a pergunta (proporção, não volume absoluto).
-7. **Interpretação**: mais `todo_created` que `todo_deleted` é esperado numa lista que cresce;
-   proporção muito diferente do teste pode indicar uso real diferente do esperado — não é
-   necessariamente um problema.
-8. **Critérios de atenção**: não se aplicam limites de alerta como nos Painéis 2/3/4 — é uma
-   métrica descritiva de uso, não de saúde.
-9. **Ação decorrente**: usar como insight de produto (ex.: se ninguém completa tarefas, talvez o
-   botão não esteja claro na UI) — não é uma ação operacional de infraestrutura.
-10. **Validação e limitações**: o script de teste cria N tarefas, completa metade, apaga 2 — o
-    painel deve mostrar exatamente essas contagens no período do teste (evidência na Seção 6).
-    Limitação: não identifica usuários únicos, só eventos.
-
----
-
 ### Painel 7 — Origem geográfica dos acessos: permitidos vs. bloqueados
 
 1. **Pergunta**: de quais países vêm as chamadas à API, e as tentativas de países bloqueados (ex.:
@@ -321,6 +221,50 @@ operacional, fora dessa exigência (decisão explícita do usuário, ver nota ao
 
 ---
 
+### Painel 9 — Bloqueios por abuso (rate-limit)
+
+1. **Pergunta**: a regra de rate-based-ban do Cloud Armor (100 requisições/min por IP → ban de 10
+   minutos) está de fato acionando, e com que frequência — independente do bloqueio geográfico do
+   Painel 7?
+2. **Motivo**: o Painel 7 responde "de onde vêm os acessos e se região bloqueada é rejeitada"; este
+   painel responde uma pergunta diferente — "alguém está abusando da API por volume (não por
+   origem), e a defesa contra isso está funcionando?". Sem ele, a regra de rate-limit (documentada
+   desde a Entrega 1) fica tão "no papel" quanto o bloqueio geográfico estava antes do Painel 7.
+3. **Origem dos dados**: mesmos logs de requisição do Load Balancer com Cloud Armor anexado
+   (`api-bs`) do Painel 7, campo `jsonPayload.enforcedSecurityPolicy.{configuredAction,outcome}`;
+   mesma log-based metric `lb_requests_by_region` (nenhuma métrica nova foi criada), agrupada por
+   `configured_action` em vez de `region_code` — é isso que separa este painel do bloqueio
+   geográfico: `configured_action=RATE_BASED_BAN` identifica avaliações pela regra de taxa,
+   diferente de `configured_action=DENY` da regra geográfica.
+4. **Consulta e cálculo**: contagem de `lb_requests_by_region` agrupada por `configured_action` e
+   `outcome`, no período. `outcome=ACCEPT` numa linha `RATE_BASED_BAN` significa "avaliado pela
+   regra, dentro do limite" (`RATE_LIMIT_THRESHOLD_CONFORM`); `outcome=DENY` significaria a banda
+   realmente acionando.
+5. **Recorte temporal**: janela recomendada de 6h (padrão do dashboard) a 7 dias — abuso por volume
+   pode ser um evento raro e pontual, então uma janela mais longa aumenta a chance de capturar algo.
+6. **Visualização**: série temporal simples de contagem por `configured_action`/`outcome` — mesmo
+   padrão dos demais painéis fundamentados, sem necessidade de nada mais elaborado.
+7. **Interpretação**: no uso normal, esperado é 100% `outcome=ACCEPT` (tráfego dentro do limite);
+   qualquer linha com `outcome=DENY` é a prova de que alguém excedeu 100 req/min de um único IP e
+   foi banido por 10 minutos.
+8. **Critérios de atenção**: qualquer ocorrência de `outcome=DENY` já é digna de atenção — em
+   condições normais de uso da turma, não se espera que ninguém bata o limite; se acontecer de
+   forma repetida vinda do mesmo período, vale cruzar com o Painel 7 para ver se também é uma
+   região que deveria estar geo-bloqueada.
+9. **Ação decorrente**: se `outcome=DENY` aparecer sem explicação (não foi um teste do grupo),
+   investigar o IP de origem via log bruto do Load Balancer e decidir se merece bloqueio permanente
+   (regra geográfica ou de IP) além do ban temporário automático.
+10. **Validação e limitações**: consultado nesta sessão via `/api/ds/query` do Grafana — **só
+    existem entradas com `configured_action=RATE_BASED_BAN` e `outcome=ACCEPT`** (confirmado
+    agrupando por `configured_action` e `outcome` juntos); nenhuma requisição desta sessão excedeu
+    de fato o limite de 100/min de um único IP. **Validação pendente**: o grupo não gerou tráfego
+    suficiente para acionar o ban de verdade — isso exigiria disparar 100+ requisições em menos de
+    um minuto do mesmo IP, o que não foi feito para não sobrecarregar desnecessariamente a aplicação
+    em produção durante os testes desta sessão. Documentado aqui como limitação honesta, no mesmo
+    padrão já usado para o teste geográfico pendente do Painel 7 (linha 5 da tabela da Seção 6).
+
+---
+
 ### Painel 8 — "Bastidores": CPU, memória e instâncias do Cloud Run (referência operacional)
 
 **Fora da fundamentação de 10 itens acima, por decisão explícita do usuário.** Este projeto tinha a
@@ -333,15 +277,33 @@ Se a banca perguntar por que ele não tem a mesma fundamentação dos demais: fo
 propósito, por decisão do grupo, para não diluir o foco da entrega (que pede métricas de aplicação/
 usuário) com métricas de infraestrutura.
 
+**Forma de visualização (atualizada)**: seguindo uma referência visual anexada pelo usuário
+(`docs/imagem apenas de referencias.jpeg`, na pasta irmã fora do repo — um card "Servidor (Host)"
+com gauges em arco verde/amarelo/vermelho e um stat simples), os três sub-painéis deixaram de ser
+série temporal e viraram indicadores do **valor atual**:
+- **8a (CPU) e 8b (Memória)**: painéis do tipo `gauge`, unidade `percentunit` (confirmado com
+  valor real antes de fixar: CPU retornou `0.00121` = 0,12%, memória `0.1937` = 19,37% — as
+  métricas nativas de utilização do Cloud Run vêm mesmo como fração 0–1, não como 0–100).
+  Limiares de cor (decisão do grupo, não é um SLA formal do GCP): verde até 50%, amarelo até 80%,
+  vermelho acima disso. Consultam só os últimos 10 minutos (`timeFrom: 10m`) e reduzem para o
+  último valor não-nulo (`lastNotNull`) — sem eixo de tempo.
+- **8c (Instâncias)**: painel do tipo `stat`, unidade simples (contagem), mostrando o valor atual
+  de instâncias `active` e `idle` lado a lado, mesma janela de 10 minutos e mesma redução para o
+  último valor.
+
 ## 5. Limitações conhecidas (documentadas, não escondidas)
 
 - `front-bb` (backend-bucket do front-end) não gera log de requisição — testado nesta sessão via
   API do Compute Engine (v1 e beta, PATCH e PUT), campo `logConfig` não é aplicado a esse tipo de
   backend. O Painel 7 cobre só tráfego de API.
 - Ausência de dado num painel, num dado período, significa **ausência de coleta ou de tráfego**,
-  não "ausência de erro" — por exemplo, o Painel 2 (taxa de erro) sem dado não significa "zero
-  erros", significa "zero requisições" naquele intervalo. Essa distinção é importante e é feita
-  explicitamente aqui porque o enunciado pede que ela não seja confundida.
+  não "ausência de erro" — por exemplo, o Painel 9 (rate-limit) sem nenhuma linha `outcome=DENY`
+  não significa que a proteção parou de funcionar, significa que ninguém excedeu o limite naquele
+  intervalo. Essa distinção é importante e é feita explicitamente aqui porque o enunciado pede que
+  ela não seja confundida.
+- `app_http_requests`, `app_http_request_duration` e `app_business_events` continuam sendo
+  coletadas (o logger do backend não mudou), mas não alimentam mais nenhum painel do dashboard
+  desde a reestruturação de escopo — ver nota na Seção 3.
 - Retenção: logs brutos ~30 dias (Cloud Logging); séries temporais do Cloud Monitoring retidas por
   mais tempo, conforme padrão do próprio serviço — ambos administrados pelo GCP, não configurados
   manualmente pelo grupo.
@@ -352,24 +314,27 @@ usuário) com métricas de infraestrutura.
 `https://todo-2026-m2.duckdns.org`, em **2026-09-17, 23:11:54Z–23:12:04Z (UTC)**. Backend na
 revisão `backend-00004-9tq` (primeira revisão com a instrumentação desta entrega).
 
+> Nota sobre esta tabela: linhas de evidência que só validavam os Painéis 1, 2, 3 ou 6 (removidos
+> na reestruturação de escopo) foram retiradas daqui. A linha da falha controlada, que originalmente
+> citava o Painel 2 além do 4a/4b, foi mantida e editada para referenciar só os painéis que
+> continuam existindo — conforme pedido explicitamente ao reestruturar o escopo.
+
 | # | Cenário | Esperado | Observado | Painel |
 |---|---|---|---|---|
-| 1 | 10× `POST /todos` + 10× `GET /todos` pelo domínio público | eventos `http_request`/`business_event` registrados, refletindo em contadores | Consulta direta ao Cloud Monitoring (`timeSeries.list`) na janela do teste: 9 séries de `GET /todos 2xx`, 8 de `POST /todos 2xx` | 1, 6 |
-| 2 | 5× `PATCH /todos/:id` (completar) | evento `business_event` com `event_name=todo_completed` | confirmado via `gcloud logging read` | 6 |
-| 3 | 2× `DELETE /todos/:id` | evento `business_event` com `event_name=todo_deleted` | confirmado (exemplo na Seção 2) | 6 |
-| 4 | `GET /api/health` | 200, usado pelo Uptime Check | HTTP 200 confirmado por `curl` | 5 |
-| 5 | **Falha controlada**: `PATCH /todos/id-invalido` | HTTP 500; `db_operation` com `result=failure`, `error_type=CastError` | HTTP 500 confirmado; par de logs com `request_id` compartilhado capturado (Seção 2); consulta ao painel 2 (join de erro/total) retornou **12.5%** de taxa de erro na rota `/todos/:id` no período (1 falha em 8 chamadas), e **4%** em `/todos` (1 falha em 25, do teste de validação abaixo) — valores batem com a contagem manual dos testes | 2, 4a, 4b |
-| 6 | `POST /todos` sem campo `text` | HTTP 400 | confirmado (`{"message":"O campo \"text\" é obrigatório"}`) | 2 |
-| 7 | Uptime Check (`todo-frontend-home`, `todo-api-health`) nas últimas 3h | `check_passed` ≈ 100% | consulta MQL retornou `fraction_true = 1` (100%) para os dois checks | 5 |
-| 8 | Origem geográfica do tráfego real (LB + Cloud Armor) | países reais aparecendo com `outcome=ACCEPT` | consulta MQL retornou séries reais de `BR`, `BE`, `PY`, `US`, `SG`, todas `ACCEPT` — nenhuma tentativa de região bloqueada (`KP`/`DE`) ocorreu de fato nesta janela, como esperado (ver limitação abaixo) | 7 |
-| 10 | **Pendente**: acesso via VPS na Alemanha, após ampliar a regra geográfica para incluir `DE` | `region_code=DE`, `outcome=DENY`, HTTP 403 no cliente | a executar pelo grupo; preencher aqui com horário, captura e a linha de log real quando feito | 7 |
-| 9 | Métricas nativas do Cloud Run durante o teste | valores plausíveis de CPU/memória/instâncias | CPU ≈ 0.13–0.17%, memória ≈ 19.6%, instâncias: 1 ativa + 1–2 ociosas (consistente com `min-instances=2`) | 8a/8b/8c |
+| 1 | `GET /api/health` | 200, usado pelo Uptime Check | HTTP 200 confirmado por `curl` | 5 |
+| 2 | **Falha controlada**: `PATCH /todos/id-invalido` | HTTP 500; `db_operation` com `result=failure`, `error_type=CastError` | HTTP 500 confirmado; par de logs com `request_id` compartilhado capturado (Seção 2); no Painel 4a, a operação `update` aparece com `result=failure` no minuto do teste, e no Painel 4b a duração dessa chamada (2,06 ms) entra na distribuição de `update` | 4a, 4b |
+| 3 | Uptime Check (`todo-frontend-home`, `todo-api-health`) nas últimas 3h | `check_passed` ≈ 100% | consulta MQL retornou `fraction_true = 1` (100%) para os dois checks | 5 |
+| 4 | Origem geográfica do tráfego real (LB + Cloud Armor) | países reais aparecendo com `outcome=ACCEPT` | consulta MQL retornou séries reais de `BR`, `BE`, `PY`, `US`, `SG`, todas `ACCEPT` — nenhuma tentativa de região bloqueada (`KP`/`DE`) ocorreu de fato nesta janela, como esperado (ver limitação abaixo) | 7 |
+| 5 | **Pendente**: acesso via VPS na Alemanha, após ampliar a regra geográfica para incluir `DE` | `region_code=DE`, `outcome=DENY`, HTTP 403 no cliente | a executar pelo grupo; preencher aqui com horário, captura e a linha de log real quando feito | 7 |
+| 6 | Métricas nativas do Cloud Run, valor pontual (gauge, últimos 10 min) | valores plausíveis de CPU/memória/instâncias | CPU = 0,12%, memória = 19,37%, instâncias: 1 ativa + 1 ociosa (consistente com `min-instances=2`) — confirmado via `/api/ds/query` com a query final (sem `every`, `timeFrom: 10m`) | 8a/8b/8c |
+| 7 | Regra de rate-based-ban (`configured_action=RATE_BASED_BAN`) nas últimas 6h | mistura de `outcome=ACCEPT` (normal) e, idealmente, algum `DENY` (banimento real) | consulta MQL retornou **só `outcome=ACCEPT`** (`RATE_LIMIT_THRESHOLD_CONFORM`) — nenhuma requisição desta sessão excedeu 100/min de um único IP. **Validação pendente**: falta gerar tráfego acima do limite de propósito (não feito nesta sessão para não sobrecarregar a produção) | 9 |
 
 **Caminho evento → log → painel demonstrado** (item obrigatório do enunciado): documentado na
-Seção 2 com o par de registros reais do teste 5 — mesmo `request_id` no `http_request` (rota
-`/todos/:id`, status 500) e no `db_operation` (`operation=update`, `result=failure`,
-`error_type=CastError`), ambos alimentando log-based metrics que geram os Painéis 2 e 4a
-diretamente no Cloud Monitoring, consultado pelo Grafana.
+Seção 2 com o par de registros reais do teste 2 — mesmo `request_id` no `http_request` (rota
+`/todos/:id`, status 500, que não alimenta mais nenhum painel fundamentado após a reestruturação)
+e no `db_operation` (`operation=update`, `result=failure`, `error_type=CastError`), que alimenta a
+log-based metric consultada pelo Painel 4a diretamente no Cloud Monitoring, consultado pelo
+Grafana.
 
 **Correspondência diagrama ↔ ambiente real**: coberta pelos comandos `gcloud`/`curl` rodados ao
 vivo nesta sessão contra o projeto `todo-infra-2026-m2` (Seções 1–3 deste documento e os dois
@@ -395,25 +360,10 @@ Todas testadas e validadas com dado real via `/api/ds/query` do Grafana antes de
 dashboard (não apenas assumidas). Também estão embutidas em
 `observability/grafana/dashboard-observabilidade.json`.
 
+Queries dos Painéis 1, 2, 3 e 6 foram removidas desta lista junto com os painéis (histórico
+disponível no controle de versão do git, se precisar consultar).
+
 ```
-Painel 1 — fetch cloud_run_revision
-  | metric 'logging.googleapis.com/user/app_http_requests'
-  | align rate(1m) | group_by [metric.route, metric.method], sum(val())
-
-Painel 2 — { t_errors: fetch cloud_run_revision
-             | metric 'logging.googleapis.com/user/app_http_requests'
-             | filter metric.status_class =~ '4xx|5xx'
-             | align rate(5m) | group_by [metric.route], sum(val()) ;
-             t_total: fetch cloud_run_revision
-             | metric 'logging.googleapis.com/user/app_http_requests'
-             | align rate(5m) | group_by [metric.route], sum(val()) }
-           | join | value [error_rate_pct: val(0) / val(1) * 100]
-
-Painel 3 — fetch cloud_run_revision
-  | metric 'logging.googleapis.com/user/app_http_request_duration'
-  | group_by [metric.route], percentile(val(), 95) | every 1m
-  (e percentile(val(), 50) para a mediana)
-
 Painel 4a — fetch cloud_run_revision
   | metric 'logging.googleapis.com/user/app_db_operations'
   | align rate(1m) | group_by [metric.operation, metric.result], sum(val())
@@ -426,19 +376,21 @@ Painel 5 — fetch uptime_url
   | metric 'monitoring.googleapis.com/uptime_check/check_passed'
   | align next_older(5m) | group_by [resource.host, metric.check_id], fraction_true(val())
 
-Painel 6 — fetch cloud_run_revision
-  | metric 'logging.googleapis.com/user/app_business_events'
-  | align rate(1m) | group_by [metric.event_name], sum(val())
-
 Painel 7 — fetch l7_lb_rule
   | metric 'logging.googleapis.com/user/lb_requests_by_region'
   | align rate(5m) | group_by [metric.region_code, metric.outcome], sum(val())
 
+Painel 9 — fetch l7_lb_rule
+  | metric 'logging.googleapis.com/user/lb_requests_by_region'
+  | align rate(5m) | group_by [metric.configured_action, metric.outcome], sum(val())
+
 Painel 8a/8b — fetch cloud_run_revision
   | metric 'run.googleapis.com/container/cpu/utilizations' (ou .../memory/utilizations)
-  | group_by [], mean(val()) | every 1m
+  | group_by [], mean(val())
+  (painel tipo gauge, sem "every" — instantâneo, timeFrom: 10m, reduzido para lastNotNull)
 
 Painel 8c — fetch cloud_run_revision
   | metric 'run.googleapis.com/container/instance_count'
-  | group_by [metric.state], mean(val()) | every 1m
+  | group_by [metric.state], mean(val())
+  (painel tipo stat, sem "every" — instantâneo, timeFrom: 10m, reduzido para lastNotNull)
 ```

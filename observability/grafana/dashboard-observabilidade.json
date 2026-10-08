@@ -1,0 +1,479 @@
+{
+  "description": "8 paineis Grafana: 4 fundamentados com os 10 itens exigidos (banco, disponibilidade, origem geografica, bloqueios por abuso) + 1 painel de referencia operacional (bastidores, em 3 sub-paineis), sobre o Cloud Monitoring do projeto todo-infra-2026-m2. Nomes diretos, sem numeracao.",
+  "id": 2052051799293952,
+  "panels": [
+    {
+      "datasource": {
+        "type": "stackdriver",
+        "uid": "cfykm3nv47jswd"
+      },
+      "description": "Contagem de chamadas Mongoose por opera\u00e7\u00e3o e resultado (app_db_operations). Pergunta: as opera\u00e7\u00f5es do backend contra o Atlas est\u00e3o funcionando?",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10
+          },
+          "unit": "reqps"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "stackdriver",
+            "uid": "cfykm3nv47jswd"
+          },
+          "queryType": "timeSeriesQuery",
+          "refId": "A",
+          "timeSeriesQuery": {
+            "projectName": "todo-infra-2026-m2",
+            "query": "fetch cloud_run_revision | metric 'logging.googleapis.com/user/app_db_operations' | align rate(1m) | group_by [metric.operation, metric.result], sum(val())"
+          }
+        }
+      ],
+      "title": "Opera\u00e7\u00f5es no banco \u2014 sucesso e falha",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "stackdriver",
+        "uid": "cfykm3nv47jswd"
+      },
+      "description": "Dura\u00e7\u00e3o das chamadas Mongoose (app_db_operation_duration), p95 por opera\u00e7\u00e3o, em ms.",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10
+          },
+          "unit": "ms"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
+      "id": 2,
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "stackdriver",
+            "uid": "cfykm3nv47jswd"
+          },
+          "queryType": "timeSeriesQuery",
+          "refId": "A",
+          "timeSeriesQuery": {
+            "projectName": "todo-infra-2026-m2",
+            "query": "fetch cloud_run_revision | metric 'logging.googleapis.com/user/app_db_operation_duration' | group_by [metric.operation], percentile(val(), 95) | every 1m"
+          }
+        }
+      ],
+      "title": "Dura\u00e7\u00e3o das opera\u00e7\u00f5es no banco (p95)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "stackdriver",
+        "uid": "cfykm3nv47jswd"
+      },
+      "description": "Fra\u00e7\u00e3o de Uptime Checks bem-sucedidos (check_passed) por endpoint, sondados a cada 5 min de localidades globais do Google. Pergunta: a aplica\u00e7\u00e3o est\u00e1 de fato acess\u00edvel pelo dom\u00ednio p\u00fablico?",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10
+          },
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 8
+      },
+      "id": 3,
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "stackdriver",
+            "uid": "cfykm3nv47jswd"
+          },
+          "queryType": "timeSeriesQuery",
+          "refId": "A",
+          "timeSeriesQuery": {
+            "projectName": "todo-infra-2026-m2",
+            "query": "fetch uptime_url | metric 'monitoring.googleapis.com/uptime_check/check_passed' | align next_older(5m) | group_by [resource.host, metric.check_id], fraction_true(val())"
+          }
+        }
+      ],
+      "title": "Disponibilidade real do dom\u00ednio",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "stackdriver",
+        "uid": "cfykm3nv47jswd"
+      },
+      "description": "Requisi\u00e7\u00f5es \u00e0 API avaliadas pela regra de rate-based-ban do Cloud Armor (100 req/min/IP, ban 10 min), por configured_action e outcome (lb_requests_by_region). Pergunta: a regra de rate-limit est\u00e1 de fato acionando, e com que frequ\u00eancia \u2014 independente do bloqueio geogr\u00e1fico?",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10
+          },
+          "unit": "reqps"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 8
+      },
+      "id": 4,
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "stackdriver",
+            "uid": "cfykm3nv47jswd"
+          },
+          "queryType": "timeSeriesQuery",
+          "refId": "A",
+          "timeSeriesQuery": {
+            "projectName": "todo-infra-2026-m2",
+            "query": "fetch l7_lb_rule | metric 'logging.googleapis.com/user/lb_requests_by_region' | align rate(5m) | group_by [metric.configured_action, metric.outcome], sum(val())"
+          }
+        }
+      ],
+      "title": "Bloqueios por abuso (rate-limit)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "stackdriver",
+        "uid": "cfykm3nv47jswd"
+      },
+      "description": "Requisi\u00e7\u00f5es \u00e0 API por pa\u00eds de origem e decis\u00e3o do Cloud Armor (lb_requests_by_region). Pergunta: de onde v\u00eam os acessos, e as tentativas de regi\u00f5es bloqueadas (ex.: Coreia do Norte) s\u00e3o rejeitadas?",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10
+          },
+          "unit": "reqps"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 16
+      },
+      "id": 5,
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "stackdriver",
+            "uid": "cfykm3nv47jswd"
+          },
+          "queryType": "timeSeriesQuery",
+          "refId": "A",
+          "timeSeriesQuery": {
+            "projectName": "todo-infra-2026-m2",
+            "query": "fetch l7_lb_rule | metric 'logging.googleapis.com/user/lb_requests_by_region' | align rate(5m) | group_by [metric.region_code, metric.outcome], sum(val())"
+          }
+        }
+      ],
+      "title": "Origem geogr\u00e1fica: permitidos vs. bloqueados",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 24
+      },
+      "id": 6,
+      "panels": [],
+      "title": "Bastidores \u2014 refer\u00eancia operacional",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "stackdriver",
+        "uid": "cfykm3nv47jswd"
+      },
+      "description": "Refer\u00eancia operacional (fora da fundamenta\u00e7\u00e3o de 10 itens, decis\u00e3o expl\u00edcita do usu\u00e1rio). Utiliza\u00e7\u00e3o atual de CPU do servi\u00e7o backend (valor instant\u00e2neo, \u00faltimos 10 min).",
+      "fieldConfig": {
+        "defaults": {
+          "max": 1,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 0.5
+              },
+              {
+                "color": "red",
+                "value": 0.8
+              }
+            ]
+          },
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 25
+      },
+      "id": 7,
+      "options": {
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "stackdriver",
+            "uid": "cfykm3nv47jswd"
+          },
+          "queryType": "timeSeriesQuery",
+          "refId": "A",
+          "timeSeriesQuery": {
+            "projectName": "todo-infra-2026-m2",
+            "query": "fetch cloud_run_revision | metric 'run.googleapis.com/container/cpu/utilizations' | group_by [], mean(val())"
+          }
+        }
+      ],
+      "timeFrom": "10m",
+      "title": "CPU (Cloud Run)",
+      "type": "gauge"
+    },
+    {
+      "datasource": {
+        "type": "stackdriver",
+        "uid": "cfykm3nv47jswd"
+      },
+      "description": "Refer\u00eancia operacional (fora da fundamenta\u00e7\u00e3o de 10 itens). Utiliza\u00e7\u00e3o atual de mem\u00f3ria do servi\u00e7o backend (valor instant\u00e2neo, \u00faltimos 10 min).",
+      "fieldConfig": {
+        "defaults": {
+          "max": 1,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 0.5
+              },
+              {
+                "color": "red",
+                "value": 0.8
+              }
+            ]
+          },
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 25
+      },
+      "id": 8,
+      "options": {
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "stackdriver",
+            "uid": "cfykm3nv47jswd"
+          },
+          "queryType": "timeSeriesQuery",
+          "refId": "A",
+          "timeSeriesQuery": {
+            "projectName": "todo-infra-2026-m2",
+            "query": "fetch cloud_run_revision | metric 'run.googleapis.com/container/memory/utilizations' | group_by [], mean(val())"
+          }
+        }
+      ],
+      "timeFrom": "10m",
+      "title": "Mem\u00f3ria (Cloud Run)",
+      "type": "gauge"
+    },
+    {
+      "datasource": {
+        "type": "stackdriver",
+        "uid": "cfykm3nv47jswd"
+      },
+      "description": "Refer\u00eancia operacional (fora da fundamenta\u00e7\u00e3o de 10 itens). Contagem atual de inst\u00e2ncias ativas/ociosas do servi\u00e7o backend.",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 25
+      },
+      "id": 9,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value_and_name"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "stackdriver",
+            "uid": "cfykm3nv47jswd"
+          },
+          "queryType": "timeSeriesQuery",
+          "refId": "A",
+          "timeSeriesQuery": {
+            "projectName": "todo-infra-2026-m2",
+            "query": "fetch cloud_run_revision | metric 'run.googleapis.com/container/instance_count' | group_by [metric.state], mean(val())"
+          }
+        }
+      ],
+      "timeFrom": "10m",
+      "title": "Inst\u00e2ncias (Cloud Run)",
+      "type": "stat"
+    }
+  ],
+  "refresh": "1m",
+  "schemaVersion": 39,
+  "tags": [
+    "todo-app",
+    "entrega2",
+    "uniamerica"
+  ],
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timezone": "utc",
+  "title": "Todo List \u2014 Observabilidade (Entrega 2)",
+  "uid": "todo-observabilidade-e2",
+  "version": 3
+}

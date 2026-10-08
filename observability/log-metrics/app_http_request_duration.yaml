@@ -1,0 +1,26 @@
+description: "Distribuicao da duracao (ms) das requisicoes HTTP da aplicacao, por rota (exclui /health)."
+filter: |-
+  resource.type="cloud_run_revision"
+  resource.labels.service_name="backend"
+  jsonPayload.event="http_request"
+  jsonPayload.route!="/health"
+metricDescriptor:
+  metricKind: DELTA
+  valueType: DISTRIBUTION
+  unit: "ms"
+  labels:
+    - key: route
+      valueType: STRING
+      description: "Rota normalizada (ex.: /todos/:id)"
+    - key: method
+      valueType: STRING
+      description: "Metodo HTTP"
+valueExtractor: EXTRACT(jsonPayload.duration_ms)
+labelExtractors:
+  route: EXTRACT(jsonPayload.route)
+  method: EXTRACT(jsonPayload.method)
+bucketOptions:
+  exponentialBuckets:
+    numFiniteBuckets: 32
+    growthFactor: 2
+    scale: 1
